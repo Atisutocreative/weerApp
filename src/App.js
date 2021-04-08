@@ -1,30 +1,45 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
+import  {
+  BrowserRouter as Router,
+  Switch,
+  Route
+} from 'react-router-dom';
+import { TempContext } from './context/TempContextProvinder'
 import SearchBar from './components/searchBar/SearchBar';
 import TabBarMenu from './components/tabBarMenu/TabBarMenu';
 import MetricSlider from './components/metricSlider/MetricSlider';
 import ForecastTab from './pages/forecastTab/ForecastTab';
+//import kelvinToCelcius from "./helpers/kelvinToCelcius";
 import './App.css';
+import TodayTab from "./pages/todayTab/TodayTab";
 
+//npm install react-router-dom --save
 // LET OP: VOEG HIER JOUW API KEY IN
-const apiKey = '4db2315b89b0c7230f9e34af4960b826';
+
 
 function App() {
   const [weatherData, setWeatherData] = useState(null);
   const [location, setLocation] = useState('');
   const [error, setError] = useState(false);
+  const [loading, toggleLoading] = useState(false);
+
+  const { kelvinToMetric } = useContext(TempContext);
 
   useEffect(() => {
     async function fetchData() {
       setError(false);
+      toggleLoading(true);
 
       try {
-        const result = await axios.get(`https://api.openweathermap.org/data/2.5/weather?q=${location},nl&appid=${apiKey}&lang=nl`);
+        const result = await axios.get(`https://api.openweathermap.org/data/2.5/weather?q=${location},nl&appid=${process.env.REACT_APP_API_KEY}&lang=nl`);
         setWeatherData(result.data);
-        console.log(result.data)
+        console.log(result.data);
+        toggleLoading(false);
       } catch (e) {
         console.error(e);
         setError(true);
+        toggleLoading(false);
       }
     }
 
@@ -49,24 +64,35 @@ function App() {
             )}
 
             <span className="location-details">
-            {weatherData &&
-            <>
-              <h2>{weatherData.weather[0].description}</h2>
-              <h3>{weatherData.name}</h3>
-              <h1>{weatherData.main.temp}</h1>
-            </>
-            }
+            {loading && (<span>Loading...</span>)}
+
+              {weatherData &&
+              <>
+                <h2>{weatherData.weather[0].description}</h2>
+                <h3>{weatherData.name}</h3>
+                <h1>{kelvinToMetric(weatherData.main.temp)}</h1>
+              </>
+              }
           </span>
           </div>
 
           {/*CONTENT ------------------ */}
-          <div className="weather-content">
-            <TabBarMenu/>
+          <Router>
+            <div className="weather-content">
+              <TabBarMenu/>
 
-            <div className="tab-wrapper">
-              <ForecastTab coordinates={weatherData && weatherData.coord}/>
+              <div className="tab-wrapper">
+                <Switch>
+                  <Route exact path="/">
+                    <TodayTab coordinates={weatherData && weatherData.coord} />
+                  </Route>
+                  <Route path="/komende-week">
+                    <ForecastTab coordinates={weatherData && weatherData.coord}/>
+                  </Route>
+                </Switch>
+              </div>
             </div>
-          </div>
+          </Router>
 
           <MetricSlider/>
         </div>
